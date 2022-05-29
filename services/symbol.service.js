@@ -1,14 +1,19 @@
+const axios = require("axios");
+
 module.exports = {
-    searchSymbol: (type) => {
-        let headers = {
-            "content-type": "application/json"
-        };
+    searchSymbol: (config) => {
+
         return new Promise((resolve, reject) => {
 
-                const body={symbol:type,price:1245};
-                
-                    resolve(body);
-               
+            axios.request(config).then((data) => {
+                // console.log(data.data)
+                resolve(data.data);
+            }).catch((err) => {
+                console.log(err)
+                reject(err);
+            });
+
+
         })
 
     },

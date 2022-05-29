@@ -1,40 +1,50 @@
 const { response } = require('express');
 const { all } = require('../routes');
 
-var faunadb = require('faunadb'),
-q = faunadb.query
+const faunadb = require('faunadb')
+const q = faunadb.query
+
 module.exports = {
-    getAllUsers:  (type) => {
-        let headers = {
-            "content-type": "application/json"
-        };
-        return new Promise( async (resolve, reject) => {
+    getAllUsers: (type) => {
+        return new Promise(async (resolve, reject) => {
 
-            var client = new faunadb.Client({ secret:'fnAElzr85hAASaX-JuUc2Y1MRtwKO6OXu07W5hQd' ,domain: "db.us.fauna.com"})
-    
-           
-           
-            let allDocuments = await client.query(
-                q.Map(
-                  q.Paginate(q.Documents(q.Collection('users'))),
-                  q.Lambda((user) => q.Get(user)
-                )
-              )
-            ) ;
-            let filteredDocumnets=[];             
-            allDocuments.data.forEach(element => {
-                filteredDocumnets.push(element.data);
-            });
+            const client = new faunadb.Client({
+                secret: process.env.FAUNADB_SERVER_SECRET,
+                domain: "db.us.fauna.com"
+            })
 
-           
-            resolve(filteredDocumnets);
-            
-                
-             
-            
-                
-                    
-               
+            let userData = client
+                .query(q.Paginate(q.Match(q.Ref('indexes/users'))))
+                .then((response) => {
+                    const dataRefs = response.data
+                    console.log(`${dataRefs.length} found`)
+                    const getAllDataQuery = dataRefs.map((ref) => {
+                        return {
+                            refId: ref.id,
+                            res: q.Get(ref)
+                        }
+                    })
+                    return client.query(getAllDataQuery).then((ret) => {
+                        const responseData = [];
+                        ret.map((data) => {
+                            data.res.data.body.id = data.refId;
+                            responseData.push(data.res);
+                        })
+                        return {
+                            statusCode: 200,
+                            body: responseData
+                        }
+                    })
+                }).catch((error) => {
+                    console.log('error', error)
+                    return {
+                        statusCode: 400,
+                        body: error
+                    }
+                })
+
+            resolve(userData);
+
         })
 
     },
